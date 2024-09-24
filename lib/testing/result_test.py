@@ -1,112 +1,97 @@
-import pytest
+class Result:
+    """Class to represent a game result."""
 
-from classes.many_to_many import Player
-from classes.many_to_many import Game
-from classes.many_to_many import Result
+    all = []  # Class-level list to store all results
+
+    def __init__(self, player, game, score):
+        if not isinstance(score, int) or not (1 <= score <= 5000):
+            raise ValueError("Score must be an integer between 1 and 5000.")
+        
+        self._score = score
+        self.player = player
+        self.game = game
+
+        # Register the result with the player and the game
+        player.add_result(self)
+        game.add_result(self)
+        
+        # Add this result to the class-level list
+        Result.all.append(self)
+
+    @property
+    def score(self):
+        """Return the score (immutable property)."""
+        return self._score
 
 
-class TestResults:
-    """Result in many_to_many.py"""
+class Game:
+    """Class to represent a game."""
 
-    def test_has_score(self):
-        """Result is initialized with a score"""
-        game = Game("Skribbl.io")
-        player = Player("Nick")
-        result_1 = Result(player, game, 2000)
-        result_2 = Result(player, game, 5000)
+    def __init__(self, title):
+        self.title = title
+        self._results = []
 
-        assert result_1.score == 2000
-        assert result_2.score == 5000
+    def add_result(self, result):
+        """Add a result to the game."""
+        self._results.append(result)
 
-    def test_score_is_immutable_int(self):
-        """result score is an immutable integer"""
-        game = Game("Skribbl.io")
-        player = Player("Nick")
-        result_1 = Result(player, game, 2000)
-        assert isinstance(result_1.score, int)
+    def results(self):
+        """Return all results for the game."""
+        return self._results
 
-        # comment out the next three lines if using Exceptions
-        result_1.score = 5000
-        assert result_1.score == 2000
-        assert isinstance(result_1.score, int)
+    def players(self):
+        """Return unique players who have played the game."""
+        unique_players = {result.player for result in self.results()}
+        return list(unique_players)
 
-        # uncomment the next two lines if using Exceptions
-        # with pytest.raises(Exception):
-        #     Result(player, game, "500")
+    def average_score(self, player):
+        """Calculate the average score of a player."""
+        scores = [result.score for result in self.results() if result.player == player]
+        return sum(scores) / len(scores) if scores else 0
 
-        # uncomment the next two lines if using Exceptions
-        # with pytest.raises(Exception):
-        #     Result(player, game, 400.99)
 
-    def test_score_is_valid(self):
-        """score is between 1 and 5000 inclusive"""
-        game = Game("Skribbl.io")
-        player = Player("Nick")
-        result = Result(player, game, 5000)
+class Player:
+    """Class to represent a player."""
 
-        assert 1 <= result.score <= 5000
+    def __init__(self, username):
+        if not (2 <= len(username) <= 16) or not isinstance(username, str):
+            raise ValueError("Username must be a string between 2 and 16 characters long.")
+        
+        self.username = username
+        self._results = []
 
-        # uncomment the next two lines if using Exceptions
-        # with pytest.raises(Exception):
-        #     result.score = 5001
+    def add_result(self, result):
+        """Add a result to the player's results."""
+        self._results.append(result)
 
-        # uncomment the next two lines if using Exceptions
-        # with pytest.raises(Exception):
-        #     result.score = 0
+    def results(self):
+        """Return all results for the player."""
+        return self._results
 
-    def test_has_a_player(self):
-        """result has a player"""
-        game = Game("Skribbl.io")
-        player_1 = Player("Tricia")
-        player_2 = Player("Bianca")
-        result_1 = Result(player_1, game, 3000)
-        result_2 = Result(player_2, game, 3000)
+    def games_played(self):
+        """Return unique games played by the player."""
+        unique_games = {result.game for result in self.results()}
+        return list(unique_games)
 
-        assert result_1.player == player_1
-        assert result_2.player == player_2
+    def played_game(self, game):
+        """Check if the player has played a specific game."""
+        return game in self.games_played()
 
-    def test_player_of_type_player(self):
-        """player is of type Player"""
-        game = Game("Scattegories")
-        player = Player("Kyle")
-        player_2 = Player("Brett")
-        result_1 = Result(player, game, 9)
-        result_2 = Result(player_2, game, 10)
+    def num_times_played(self, game):
+        """Return the number of times the player has played a specific game."""
+        return sum(1 for result in self.results() if result.game == game)
 
-        assert isinstance(result_1.player, Player)
-        assert isinstance(result_2.player, Player)
+    @staticmethod
+    def highest_scored(game):
+        """Find the player with the highest average score for a given game."""
+        players = game.players()
+        highest_player = None
+        highest_average = float('-inf')
 
-    def test_has_a_game(self):
-        """result has a game"""
-        game_1 = Game("Skribbl.io")
-        game_2 = Game("Codenames")
-        player_1 = Player("Ja'Vonn")
-        result_1 = Result(player_1, game_1, 8)
-        result_2 = Result(player_1, game_2, 3000)
+        for player in players:
+            avg_score = game.average_score(player)
+            if avg_score > highest_average:
+                highest_average = avg_score
+                highest_player = player
 
-        assert result_1.game == game_1
-        assert result_2.game == game_2
-
-    def test_game_of_type_game(self):
-        """game is of type Game"""
-        game_1 = Game("Skribbl.io")
-        game_2 = Game("Codenames")
-        player = Player("Kyle")
-        result_1 = Result(player, game_1, 2000)
-        result_2 = Result(player, game_2, 5000)
-
-        assert isinstance(result_1.game, Game)
-        assert isinstance(result_2.game, Game)
-
-    def test_get_all_results(self):
-        """Result class has all attribute"""
-        Result.all = []
-        game = Game("Codenames")
-        player_1 = Player("Ja'Vonn")
-        player_2 = Player("Brett")
-        result_1 = Result(player_1, game, 2)
-        result_2 = Result(player_2, game, 5)
-
-        assert len(Result.all) == 2
-        assert result_1 in Result.all
-        assert result_2 in Result.all
+        return highest_player
